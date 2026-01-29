@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 // Asset representa el recurso que estamos trackeando (un paquete, un móvil, etc.)
 type Asset struct {
@@ -21,6 +24,6 @@ type Event struct {
 
 // AssetRepository es el "contrato" (puerto). No nos importa si es Postgres o Mongo.
 type AssetRepository interface {
-	UpdateLocation(event Event) error
-	GetByID(id string) (Asset, error)
+	UpdateLocation(ctx context.Context, event Event) error
+	GetByID(ctx context.Context, id string) (Asset, error)
 }
