@@ -1,0 +1,10 @@
+# Binarios
+gopher-stream
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Carpeta de compilación
+bin/
