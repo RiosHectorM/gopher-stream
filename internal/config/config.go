@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+
 	"github.com/joho/godotenv"
 )
 
@@ -31,8 +32,14 @@ func Load() (*Config, error) {
 		user, pass, host, dbPort, dbName, ssl,
 	)
 
+	// Configuración del puerto de la API
+	appPort := os.Getenv("APP_PORT")
+	if appPort == "" {
+		appPort = "8080"
+	}
+
 	return &Config{
-		Port:   os.Getenv("PORT"), // Por defecto suele ser 8080
+		Port:   appPort,
 		DBConn: connStr,
 	}, nil
 }
