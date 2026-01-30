@@ -35,7 +35,7 @@ func main() {
 
 	// 4. Servidor
 	mux := http.NewServeMux()
-	mux.HandleFunc("/tracking", h.UpdateLocation)
+	mux.HandleFunc("/tracking", handler.AuthMiddleware(h.UpdateLocation))
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
