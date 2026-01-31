@@ -41,22 +41,29 @@ func (s *AssetService) worker(id int) {
 			if i < maxRetries-1 {
 				time.Sleep(time.Second * 2)
 			} else {
-				fmt.Printf("⚠️ Worker %d: Agotado. Intentando guardar en DB DLQ...\n", id)
-				errDLQ := s.repo.SaveToDLQ(context.Background(), event, "Agotados reintentos")
+				fmt.Println("⚠️ Agotados reintentos. Intentando DB...")
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second) // Timeout corto para que no cuelgue
+				errDLQ := s.repo.SaveToDLQ(ctx, event, "Agotados reintentos")
+				cancel()
 
 				if errDLQ != nil {
-					// ¡PLAN C! Si la DB está caída del todo, guardamos en un archivo local
-					fmt.Printf("🚨 ERROR CRÍTICO: DB inaccesible. Guardando en emergencia_log.json\n")
+					fmt.Printf("🚨 FALLÓ DB DLQ: %v. Escribiendo en archivo...\n", errDLQ)
 
-					linea := fmt.Sprintf(`{"time": "%s", "asset": "%s", "data": "%s", "error": "%v"}\n`,
-						time.Now().Format(time.RFC3339), event.AssetID, event.Payload, errDLQ)
+					// Usamos una ruta más explícita para estar seguros
+					f, err := os.OpenFile("emergencia_dlq.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+					if err != nil {
+						fmt.Printf("❌ ERROR FATAL: Ni siquiera pude crear el archivo: %v\n", err)
+					} else {
+						linea := fmt.Sprintf("TIME: %s | ASSET: %s | DATA: %s | ERR: %v\n",
+							time.Now().Format(time.RFC3339), event.AssetID, event.Payload, errDLQ)
 
-					// Escribimos en un archivo (append mode)
-					f, _ := os.OpenFile("emergencia_dlq.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-					f.WriteString(linea)
-					f.Close()
+						_, _ = f.WriteString(linea)
+						f.Close()
+						fmt.Println("✅ Datos salvados en emergencia_dlq.log")
+					}
 				}
 			}
+
 		}
 	}
 }

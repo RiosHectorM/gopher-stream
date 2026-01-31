@@ -1,0 +1,6 @@
+TIME: 2026-01-31T09:53:57-03:00 | ASSET: POSTMAN-TRUCK-01 | DATA: Prueba desconectado FFF | ERR: failed to connect to `user=hector_admin database=gopherstream`:
+	[::1]:5432 (localhost): dial error: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it.
+	127.0.0.1:5432 (localhost): dial error: dial tcp 127.0.0.1:5432: connectex: No connection could be made because the target machine actively refused it.
+TIME: 2026-01-31T09:54:37-03:00 | ASSET: POSTMAN-TRUCK-01 | DATA: Prueba desconectado AAA | ERR: failed to connect to `user=hector_admin database=gopherstream`:
+	[::1]:5432 (localhost): dial error: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it.
+	127.0.0.1:5432 (localhost): dial error: dial tcp 127.0.0.1:5432: connectex: No connection could be made because the target machine actively refused it.
