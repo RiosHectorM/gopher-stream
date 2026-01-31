@@ -38,3 +38,9 @@ func (r *PostgresRepository) GetByID(ctx context.Context, id string) (domain.Ass
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&asset.ID, &asset.Type, &asset.Status, &asset.LastUpdate)
 	return asset, err
 }
+
+func (r *PostgresRepository) SaveToDLQ(ctx context.Context, event domain.Event, reason string) error {
+    query := `INSERT INTO dead_letter_events (asset_id, payload, error_message) VALUES ($1, $2, $3)`
+    _, err := r.db.ExecContext(ctx, query, event.AssetID, event.Payload, reason)
+    return err
+}

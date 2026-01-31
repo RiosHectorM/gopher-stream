@@ -25,5 +25,5 @@ type Event struct {
 // AssetRepository es el "contrato" (puerto). No nos importa si es Postgres o Mongo.
 type AssetRepository interface {
 	UpdateLocation(ctx context.Context, event Event) error
-	GetByID(ctx context.Context, id string) (Asset, error)
+	SaveToDLQ(ctx context.Context, event Event, reason string) error // <--- Nuevo
 }

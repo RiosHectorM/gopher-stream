@@ -38,9 +38,11 @@ func (s *AssetService) worker(id int) {
 
 			fmt.Printf("❌ Worker %d: Error en intento %d para %s: %v\n", id, i+1, event.AssetID, err)
 			if i < maxRetries-1 {
-				time.Sleep(time.Second * 2) // Esperamos antes de reintentar
+				time.Sleep(time.Second * 2)
 			} else {
-				fmt.Printf("⚠️ Worker %d: Evento de %s enviado a DLQ (Logs)\n", id, event.AssetID)
+				// Si llegamos acá, fallaron todos los reintentos
+				fmt.Printf("⚠️ Worker %d: Agotado. Guardando en DLQ...\n", id)
+				_ = s.repo.SaveToDLQ(context.Background(), event, "Agotados reintentos de conexión")
 			}
 		}
 	}
