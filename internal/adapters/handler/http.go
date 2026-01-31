@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+
 	"github.com/RiosHectorM/gopher-stream/internal/domain"
 )
 
@@ -29,13 +30,12 @@ func (h *AssetHandler) UpdateLocation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Pasar al servicio usando el contexto de la petición
 	if err := h.service.ProcessMovement(r.Context(), event); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// 4. Respuesta exitosa
+	// 202 Accepted es el código correcto para procesos asíncronos
 	w.WriteHeader(http.StatusAccepted)
-	w.Write([]byte("Evento recibido correctamente"))
+	w.Write([]byte("Evento recibido y en proceso de guardado"))
 }
