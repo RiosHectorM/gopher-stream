@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -40,9 +41,21 @@ func (s *AssetService) worker(id int) {
 			if i < maxRetries-1 {
 				time.Sleep(time.Second * 2)
 			} else {
-				// Si llegamos acá, fallaron todos los reintentos
-				fmt.Printf("⚠️ Worker %d: Agotado. Guardando en DLQ...\n", id)
-				_ = s.repo.SaveToDLQ(context.Background(), event, "Agotados reintentos de conexión")
+				fmt.Printf("⚠️ Worker %d: Agotado. Intentando guardar en DB DLQ...\n", id)
+				errDLQ := s.repo.SaveToDLQ(context.Background(), event, "Agotados reintentos")
+
+				if errDLQ != nil {
+					// ¡PLAN C! Si la DB está caída del todo, guardamos en un archivo local
+					fmt.Printf("🚨 ERROR CRÍTICO: DB inaccesible. Guardando en emergencia_log.json\n")
+
+					linea := fmt.Sprintf(`{"time": "%s", "asset": "%s", "data": "%s", "error": "%v"}\n`,
+						time.Now().Format(time.RFC3339), event.AssetID, event.Payload, errDLQ)
+
+					// Escribimos en un archivo (append mode)
+					f, _ := os.OpenFile("emergencia_dlq.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+					f.WriteString(linea)
+					f.Close()
+				}
 			}
 		}
 	}
