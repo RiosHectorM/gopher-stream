@@ -6,44 +6,53 @@ import (
 	"time"
 )
 
-// AssetService es el cerebro. Contiene el repositorio (la DB)
-// pero no sabe que es Postgres, solo sabe que puede "UpdateLocation".
 type AssetService struct {
-	repo AssetRepository
+	repo      AssetRepository
+	eventChan chan Event
 }
 
-// NewAssetService es el constructor que usamos en el main.go
 func NewAssetService(repo AssetRepository) *AssetService {
-	return &AssetService{
-		repo: repo,
+	s := &AssetService{
+		repo:      repo,
+		eventChan: make(chan Event, 100), // Buffer para 100 eventos
+	}
+
+	// Lanzamos 3 workers para procesar en paralelo
+	for i := 1; i <= 3; i++ {
+		go s.worker(i)
+	}
+
+	return s
+}
+
+// El worker con lógica de reintento básica
+func (s *AssetService) worker(id int) {
+	fmt.Printf("👷 Worker %d iniciado\n", id)
+	for event := range s.eventChan {
+		maxRetries := 3
+		for i := 0; i < maxRetries; i++ {
+			err := s.repo.UpdateLocation(context.Background(), event)
+			if err == nil {
+				break // Éxito, salimos del bucle de reintentos
+			}
+
+			fmt.Printf("❌ Worker %d: Error en intento %d para %s: %v\n", id, i+1, event.AssetID, err)
+			if i < maxRetries-1 {
+				time.Sleep(time.Second * 2) // Esperamos antes de reintentar
+			} else {
+				fmt.Printf("⚠️ Worker %d: Evento de %s enviado a DLQ (Logs)\n", id, event.AssetID)
+			}
+		}
 	}
 }
 
-// ProcessMovement es la "Lógica de Negocio" propiamente dicha.
 func (s *AssetService) ProcessMovement(ctx context.Context, event Event) error {
-
-	// 1. REGLA DE NEGOCIO: El ID del activo no puede ser vacío
+	// Aquí podrías validar datos (ej: lat/long válidas)
 	if event.AssetID == "" {
-		return fmt.Errorf("el ID del activo es obligatorio para el tracking")
+		return fmt.Errorf("asset_id es obligatorio")
 	}
 
-	// 2. REGLA DE NEGOCIO: Si el sensor no mandó Timestamp, usamos la hora del servidor
-	// Esto es clave para el tracking de logística
-	if event.Timestamp.IsZero() {
-		event.Timestamp = time.Now()
-	}
-
-	// 3. REGLA DE NEGOCIO: Validar que las coordenadas sean reales
-	if event.Lat == 0 && event.Long == 0 {
-		return fmt.Errorf("coordenadas inválidas: (0,0) no es una posición de tracking permitida")
-	}
-
-	// 4. PERSISTENCIA: Si todo está OK, le pedimos al repositorio que lo guarde
-	// El service no sabe SQL, solo sabe mandar la orden.
-	err := s.repo.UpdateLocation(ctx, event)
-	if err != nil {
-		return fmt.Errorf("error al persistir el movimiento: %w", err)
-	}
-
+	// Mandamos al canal y liberamos el Handler inmediatamente
+	s.eventChan <- event
 	return nil
 }
