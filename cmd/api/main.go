@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,6 +19,12 @@ import (
 
 func main() {
 	// 1. Configuración
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
+	slog.Info("🚀 GopherStream iniciando", "port", 8080)
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("❌ Error cargando configuración: %v", err)

@@ -8,3 +8,7 @@ gopher-stream
 
 # Carpeta de compilación
 bin/
+.env
+
+# Logs de emergencia
+emergencia_dlq.log
