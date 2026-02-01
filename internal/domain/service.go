@@ -12,10 +12,9 @@ import (
 func NewAssetService(repo AssetRepository) *AssetService {
 	s := &AssetService{
 		repo:      repo,
-		eventChan: make(chan Event, 100), // Buffer para 100 eventos
+		eventChan: make(chan Event, 100),
 	}
 
-	// Lanzamos 3 workers para procesar en paralelo
 	for i := 1; i <= 3; i++ {
 		go s.worker(i)
 	}
@@ -50,7 +49,6 @@ func (s *AssetService) worker(id int) {
 			}
 		}
 
-		// Si después de los reintentos no hubo éxito, vamos a la DLQ
 		if !success {
 			slog.Error("⚠️ Agotados reintentos. Intentando persistir en DB DLQ...", "asset_id", event.AssetID)
 
@@ -82,11 +80,6 @@ func (s *AssetService) worker(id int) {
 }
 
 func (s *AssetService) ProcessMovement(ctx context.Context, event Event) error {
-	// Aquí podrías validar datos (ej: lat/long válidas)
-	if event.AssetID == "" {
-		return fmt.Errorf("asset_id es obligatorio")
-	}
-
 	// Mandamos al canal y liberamos el Handler inmediatamente
 	s.eventChan <- event
 	return nil

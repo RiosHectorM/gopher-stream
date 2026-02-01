@@ -6,7 +6,7 @@ import (
 
 	"github.com/RiosHectorM/gopher-stream/internal/domain"
 
-	_ "github.com/jackc/pgx/v5/stdlib" // Driver de alto rendimiento
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type PostgresRepository struct {
@@ -26,7 +26,6 @@ func (r *PostgresRepository) UpdateLocation(ctx context.Context, event domain.Ev
         INSERT INTO asset_events (asset_id, lat, long, payload, timestamp)
         VALUES ($1, $2, $3, $4, $5)
     `
-	// Usamos Context para manejar timeouts (fundamental en sistemas críticos)
 	_, err := r.db.ExecContext(ctx, query, event.AssetID, event.Lat, event.Long, event.Payload, event.Timestamp)
 	return err
 }

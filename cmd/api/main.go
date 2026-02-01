@@ -42,7 +42,6 @@ func main() {
 
 	go service.StartRecoveryMonitor(context.Background())
 
-	// 4. Servidor
 	mux := http.NewServeMux()
 	mux.HandleFunc("/tracking", handler.AuthMiddleware(h.UpdateLocation))
 

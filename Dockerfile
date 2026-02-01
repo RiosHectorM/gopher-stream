@@ -1,15 +1,17 @@
-FROM golang:1.21-alpine
+FROM golang:alpine
 
 WORKDIR /app
 
-# Copiamos archivos de dependencias
-COPY go.mod go.sum ./
+# Instalamos git por si alguna dependencia lo necesita
+RUN apk add --no-cache git
+
+# Copiamos solo el mod primero (el asterisco ayuda si no hay sum)
+COPY go.mod go.sum* ./
 RUN go mod download
 
-# Copiamos el resto del código
 COPY . .
 
-# Compilamos la app
+# Compilamos
 RUN go build -o main ./cmd/api/main.go
 
 EXPOSE 8080
