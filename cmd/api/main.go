@@ -40,6 +40,8 @@ func main() {
 	service := domain.NewAssetService(repo)
 	h := handler.NewAssetHandler(service)
 
+	go service.RecoverFromEmergencyLog()
+
 	// 4. Servidor
 	mux := http.NewServeMux()
 	mux.HandleFunc("/tracking", handler.AuthMiddleware(h.UpdateLocation))

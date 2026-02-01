@@ -3,15 +3,11 @@ package domain
 import (
 	"context"
 	"fmt"
-	"os"
-	"time"
 	"log/slog"
+	"os"
+	"strings"
+	"time"
 )
-
-type AssetService struct {
-	repo      AssetRepository
-	eventChan chan Event
-}
 
 func NewAssetService(repo AssetRepository) *AssetService {
 	s := &AssetService{
@@ -57,14 +53,14 @@ func (s *AssetService) worker(id int) {
 		// Si después de los reintentos no hubo éxito, vamos a la DLQ
 		if !success {
 			slog.Error("⚠️ Agotados reintentos. Intentando persistir en DB DLQ...", "asset_id", event.AssetID)
-			
+
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			errDLQ := s.repo.SaveToDLQ(ctx, event, "Agotados reintentos")
 			cancel()
 
 			if errDLQ != nil {
-				slog.Error("🚨 FALLÓ DB DLQ. Escribiendo en archivo de emergencia...", 
-					"error", errDLQ, 
+				slog.Error("🚨 FALLÓ DB DLQ. Escribiendo en archivo de emergencia...",
+					"error", errDLQ,
 					"asset_id", event.AssetID,
 				)
 
@@ -75,7 +71,7 @@ func (s *AssetService) worker(id int) {
 					// Guardamos la línea en un formato más limpio para la futura recuperación
 					linea := fmt.Sprintf("TIME:%s|ID:%s|PAYLOAD:%s|ERR:%v\n",
 						time.Now().Format(time.RFC3339), event.AssetID, event.Payload, errDLQ)
-					
+
 					_, _ = f.WriteString(linea)
 					f.Close()
 					slog.Info("💾 Datos salvados localmente", "archivo", "emergencia_dlq.log")
@@ -94,4 +90,52 @@ func (s *AssetService) ProcessMovement(ctx context.Context, event Event) error {
 	// Mandamos al canal y liberamos el Handler inmediatamente
 	s.eventChan <- event
 	return nil
+}
+
+const recoveryDir = "storage/recovery"
+
+func (s *AssetService) RecoverFromEmergencyLog() {
+	_ = os.MkdirAll(recoveryDir, 0755)
+
+	fileName := "emergencia_dlq.log"
+
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		return
+	}
+
+	slog.Info("📂 Archivo de emergencia detectado. Iniciando recuperación...")
+
+	// 1. Leemos todo el contenido y cerramos el archivo rápido
+	content, err := os.ReadFile(fileName)
+	if err != nil {
+		slog.Error("❌ No se pudo leer el archivo", "error", err)
+		return
+	}
+
+	lines := strings.Split(string(content), "\n")
+	recoveredCount := 0
+
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		slog.Info("♻️ Recuperando línea", "contenido", line)
+		// Aquí es donde en el futuro harás el parseo real a un struct Event
+		recoveredCount++
+	}
+
+	// 2. Intentamos renombrar (Plan de rotación de logs)
+	if recoveredCount > 0 {
+		// Movemos el archivo a la carpeta de backup con un nombre limpio
+		timestamp := time.Now().Format("2006-01-02_15-04-05")
+		backupPath := fmt.Sprintf("%s/recuperado_%s.bak", recoveryDir, timestamp)
+
+		err := os.Rename(fileName, backupPath)
+		if err != nil {
+			slog.Error("❌ No se pudo mover el archivo a storage", "error", err)
+			return
+		}
+		slog.Info("✅ Datos recuperados y archivados en storage", "total", recoveredCount, "path", backupPath)
+	}
 }

@@ -7,8 +7,9 @@ gopher-stream
 *.dylib
 
 # Carpeta de compilación
-bin/
 .env
+bin/
 
 # Logs de emergencia
 emergencia_dlq.log
+storage/

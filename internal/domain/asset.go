@@ -27,3 +27,8 @@ type AssetRepository interface {
 	UpdateLocation(ctx context.Context, event Event) error
 	SaveToDLQ(ctx context.Context, event Event, reason string) error // <--- Nuevo
 }
+
+type AssetService struct {
+	repo      AssetRepository
+	eventChan chan Event
+}
