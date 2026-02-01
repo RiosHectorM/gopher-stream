@@ -26,6 +26,7 @@ type Event struct {
 type AssetRepository interface {
 	UpdateLocation(ctx context.Context, event Event) error
 	SaveToDLQ(ctx context.Context, event Event, reason string) error // <--- Nuevo
+	IsAvailable(ctx context.Context) bool
 }
 
 type AssetService struct {

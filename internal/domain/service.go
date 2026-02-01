@@ -139,3 +139,32 @@ func (s *AssetService) RecoverFromEmergencyLog() {
 		slog.Info("✅ Datos recuperados y archivados en storage", "total", recoveredCount, "path", backupPath)
 	}
 }
+
+func (s *AssetService) StartRecoveryMonitor(ctx context.Context) {
+	// Revisamos cada 30 segundos
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	slog.Info("🔍 Monitor de recuperación iniciado")
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// 1. Verificamos si existe el archivo antes de molestar a la DB
+			if _, err := os.Stat("emergencia_dlq.log"); err == nil {
+				slog.Info("📡 Detectado archivo de emergencia. Comprobando DB...")
+
+				// 2. ¿La base de datos está disponible?
+				// Suponiendo que tu repo tiene un método Ping o simplemente probamos
+				if s.repo.IsAvailable(ctx) {
+					slog.Info("✅ DB disponible. Iniciando auto-recuperación...")
+					s.RecoverFromEmergencyLog()
+				} else {
+					slog.Warn("⏳ Archivo pendiente pero la DB sigue caída. Reintentando luego...")
+				}
+			}
+		}
+	}
+}

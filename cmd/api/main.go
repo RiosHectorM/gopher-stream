@@ -40,7 +40,7 @@ func main() {
 	service := domain.NewAssetService(repo)
 	h := handler.NewAssetHandler(service)
 
-	go service.RecoverFromEmergencyLog()
+	go service.StartRecoveryMonitor(context.Background())
 
 	// 4. Servidor
 	mux := http.NewServeMux()
